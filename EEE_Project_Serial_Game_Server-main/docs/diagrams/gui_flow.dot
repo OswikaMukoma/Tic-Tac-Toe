@@ -1,0 +1,27 @@
+digraph gui {
+  rankdir=TB; node [shape=box, style="rounded,filled", fillcolor="#eef3fb", fontname="Helvetica"];
+  edge [fontname="Helvetica", fontsize=10];
+  start [label="Start screen\n(port chosen, not connected)"];
+  conn  [label="Send CONNECT"];
+  idle  [label="Connected, IDLE\nNew Game enabled"];
+  newg  [label="Send NEW"];
+  play  [label="IN_PROGRESS\nclick a free cell"];
+  mv    [label="Send MOVE:i:mark"];
+  chk   [shape=diamond, label="Valid reply?", fillcolor="#fff6dd"];
+  draw  [label="Redraw board from reply\nOK:BOARD / WIN / DRAW", fillcolor="#e6f4ea"];
+  nack  [label="Show NACK text\nboard unchanged", fillcolor="#fdeaea"];
+  over  [label="GAME_OVER\ncells disabled, result shown"];
+  reset [label="NACK:NOGAME mid-game\n(device button reset)", fillcolor="#fdeaea"];
+  disc  [label="RESIGN if running, then DISCONNECT\nclose port"];
+  start -> conn -> idle [label="OK"];
+  conn -> idle [label="NACK:STATE -> DISCONNECT/STATE resync", style=dashed];
+  idle -> newg -> play [label="OK:BOARD"];
+  play -> mv -> chk;
+  chk -> draw [label="yes, OK/WIN/DRAW"]; draw -> play [label="game continues"]; draw -> over [label="WIN / DRAW"];
+  chk -> nack [label="NACK:OCCUPIED/RANGE/NOTURN"]; nack -> play;
+  chk -> reset [label="NACK:NOGAME"]; reset -> idle;
+  chk -> mv [label="no reply: send STATE once", style=dashed];
+  play -> over [label="Resign: OK:GAMEOVER"];
+  over -> newg [label="New Game"];
+  idle -> disc; over -> disc; disc -> start;
+}

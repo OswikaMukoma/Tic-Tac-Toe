@@ -1,0 +1,23 @@
+sequenceDiagram
+    participant G as GUI (untrusted)
+    participant S as STM32 (referee)
+    G->>S: CONNECT
+    S-->>G: OK
+    G->>S: NEW
+    S-->>G: OK:BOARD:.........
+    G->>S: MOVE:4:X
+    S-->>G: OK:BOARD:....X....
+    G->>S: MOVE:0:O
+    S-->>G: OK:BOARD:O...X....
+    G->>S: MOVE:3:X
+    S-->>G: OK:BOARD:O..XX....
+    G->>S: MOVE:1:O
+    S-->>G: OK:BOARD:OO.XX....
+    G->>S: MOVE:5:X
+    S-->>G: WIN:X:BOARD:OO.XXX...
+    Note over S: state = GAME_OVER
+    G->>S: MOVE:2:O
+    S-->>G: NACK:NOGAME
+    G->>S: DISCONNECT
+    S-->>G: OK
+    Note over S: state = IDLE

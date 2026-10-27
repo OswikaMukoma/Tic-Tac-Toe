@@ -1,0 +1,27 @@
+digraph fsm {
+  graph [rankdir=LR, fontname="DejaVu Sans", nodesep=0.9, ranksep=2.2, pad=0.3, bgcolor=white, splines=true];
+  node  [fontname="DejaVu Sans", fontsize=15, shape=box, style="rounded,filled,bold", margin="0.35,0.22", penwidth=2];
+  edge  [fontname="DejaVu Sans", fontsize=11, penwidth=1.4, arrowsize=0.9];
+
+  start [shape=point, width=0.15, color="#222222"];
+  IDLE        [fillcolor="#dbe7f5", color="#1f3a5f", label="IDLE\n(boot / after disconnect)"];
+  IN_PROGRESS [fillcolor="#d7efeb", color="#1f8a7e", label="IN_PROGRESS\n(board, turn, status live)"];
+  GAME_OVER   [fillcolor="#faebcf", color="#d98e1f", label="GAME_OVER\n(result kept, moves refused)"];
+
+  start -> IDLE;
+  IDLE -> IN_PROGRESS [label="NEW\n/ OK:BOARD:.........", fontsize=12];
+  IN_PROGRESS -> GAME_OVER [label="terminal MOVE / WIN or DRAW\nRESIGN / OK:GAMEOVER", fontsize=12];
+  GAME_OVER -> IN_PROGRESS [label="NEW / OK:BOARD:.........", fontsize=12, constraint=false];
+  GAME_OVER -> IDLE [label="DISCONNECT / OK", fontsize=12, constraint=false];
+
+  IDLE -> IDLE [headport=n, tailport=n, label="CONNECT, DISCONNECT / OK\nMOVE, STATE, RESIGN / NACK:NOGAME", fontcolor="#1f3a5f"];
+  IN_PROGRESS -> IN_PROGRESS [headport=n, tailport=n, label="MOVE legal / OK:BOARD\nMOVE illegal / NACK (state unchanged)\nSTATE / BOARD\nCONNECT, NEW, DISCONNECT / NACK:STATE", fontcolor="#1f8a7e"];
+  GAME_OVER -> GAME_OVER [headport=n, tailport=n, label="STATE / BOARD\nMOVE, RESIGN / NACK:NOGAME\nCONNECT / NACK:STATE", fontcolor="#a8680a"];
+
+  btn [shape=note, style=filled, fillcolor="#eef2f7", color="#6b7685", fontsize=11, penwidth=1,
+       label="Button SW0: local reset.\nFrom any state: board cleared, go to IDLE.\nNo message is sent."];
+  btn -> IDLE [style=dashed, color="#6b7685", arrowhead=normal];
+
+  malformed [shape=note, style=filled, fillcolor="#f6dcd8", color="#b83b2e", fontsize=11, penwidth=1,
+       label="In every state: bad framing, checksum\nor syntax gets NACK:TOOLONG / TIMEOUT /\nBADSUM / BADCMD and nothing changes."];
+}

@@ -1,0 +1,36 @@
+digraph fsm {
+  graph [rankdir=TB, fontname="Helvetica", nodesep=0.22, ranksep=0.4, pad=0.05, bgcolor=white, splines=true, compound=true];
+  node  [fontname="Helvetica", fontsize=14, shape=box, style="rounded,filled", margin="0.1,0.06", penwidth=1.2];
+  edge  [fontname="Helvetica", fontsize=12, penwidth=1.0, arrowsize=0.6];
+
+  start [shape=point, width=0.08];
+  btn [shape=note, style=filled, fillcolor="#eef2f7", color="#6b7685", fontsize=12, label="SW0 (any state):\nreset to IDLE,\nno message"];
+  IDLE        [fillcolor="#dbe7f5", color="#1f3a5f", label="IDLE\nboot, after disconnect"];
+  IN_PROGRESS [fillcolor="#d7efeb", color="#1f8a7e", label="IN_PROGRESS\ngame running"];
+  GAME_OVER   [fillcolor="#faebcf", color="#d98e1f", label="GAME_OVER\nmoves refused"];
+  { rank=same; start; btn; IDLE; IN_PROGRESS; GAME_OVER }
+  start -> IDLE; btn -> IDLE [style=dashed, color="#6b7685"];
+  IDLE -> IN_PROGRESS [label="NEW /\nOK:BOARD"];
+  IN_PROGRESS -> GAME_OVER [label="RESIGN /\nOK:GAMEOVER"];
+  GAME_OVER -> IDLE [label="DISCONNECT / OK", constraint=false, tailport=s, headport=s];
+
+  subgraph cluster_move {
+    label="MOVE in IN_PROGRESS: checks only read; write is last"; fontsize=12; style="rounded,dashed"; color="#1f8a7e";
+    c1 [shape=diamond, style=filled, fillcolor="#fff6dd", label="index in\n0..8?", margin="0.01,0.01"];
+    c2 [shape=diamond, style=filled, fillcolor="#fff6dd", label="claimed mark =\nside to move?", margin="0.01,0.01"];
+    c3 [shape=diamond, style=filled, fillcolor="#fff6dd", label="cell\nempty?", margin="0.01,0.01"];
+    commit [fillcolor="#e6f4ea", label="commit: write\ncell, then check\nline / full board"];
+    e1 [shape=plaintext, style="", fontcolor="#b83b2e", fontsize=12, label="NACK:RANGE"];
+    e2 [shape=plaintext, style="", fontcolor="#b83b2e", fontsize=12, label="NACK:NOTURN"];
+    e3 [shape=plaintext, style="", fontcolor="#b83b2e", fontsize=12, label="NACK:OCCUPIED"];
+    { rank=same; c1; c2; c3; commit }
+    c1 -> c2 [label="yes"]; c2 -> c3 [label="yes"]; c3 -> commit [label="yes"];
+    c1 -> e1 [color="#b83b2e", label="no"]; c2 -> e2 [color="#b83b2e", label="no"]; c3 -> e3 [color="#b83b2e", label="no"];
+  }
+  IN_PROGRESS -> c1 [label=" MOVE", lhead=cluster_move];
+  IDLE -> c1 [style=invis];
+  commit -> GAME_OVER [label="WIN / DRAW", constraint=false, color="#d98e1f"];
+  commit -> IN_PROGRESS [label="OK:BOARD", constraint=false, style=dashed];
+  note [shape=note, style=filled, fillcolor="#f6dcd8", color="#b83b2e", fontsize=12, label="Framing and syntax errors (TOOLONG, TIMEOUT,\nBADSUM, BADCMD) in any state: state unchanged"];
+  e3 -> note [style=invis];
+}

@@ -1,0 +1,19 @@
+digraph framer {
+  graph [rankdir=LR, fontname="DejaVu Sans", nodesep=1.0, ranksep=2.0, pad=0.3, bgcolor=white];
+  node  [fontname="DejaVu Sans", fontsize=15, shape=box, style="rounded,filled,bold", margin="0.35,0.22", penwidth=2];
+  edge  [fontname="DejaVu Sans", fontsize=11, penwidth=1.4, arrowsize=0.9];
+
+  start [shape=point, width=0.15, color="#222222"];
+  IDLE_RX   [fillcolor="#dbe7f5", color="#1f3a5f", label="IDLE_RX\n(no partial frame)"];
+  RECEIVING [fillcolor="#d7efeb", color="#1f8a7e", label="RECEIVING\n(frame in progress)"];
+  DISCARDING[fillcolor="#f6dcd8", color="#b83b2e", label="DISCARDING\n(skip rest of oversize frame)"];
+
+  start -> IDLE_RX;
+  IDLE_RX -> RECEIVING [label="any byte except LF\n(store it)"];
+  IDLE_RX -> IDLE_RX [headport=n, tailport=n, label="LF (empty frame)\n/ NACK:BADCMD"];
+  RECEIVING -> RECEIVING [headport=n, tailport=n, label="byte, length <= 32\n(store it)", fontcolor="#1f8a7e"];
+  RECEIVING -> IDLE_RX [label="LF / parse, reply once\n500 ms silence / NACK:TIMEOUT", constraint=false];
+  RECEIVING -> DISCARDING [label="33rd byte\n/ NACK:TOOLONG (sent now)"];
+  DISCARDING -> DISCARDING [headport=n, tailport=n, label="bytes ignored", fontcolor="#b83b2e"];
+  DISCARDING -> IDLE_RX [label="LF (no second reply)\n500 ms silence (silent)", constraint=false];
+}

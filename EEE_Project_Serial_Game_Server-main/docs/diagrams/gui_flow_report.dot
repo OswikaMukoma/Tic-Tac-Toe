@@ -1,0 +1,18 @@
+digraph gui {
+  graph [rankdir=TB, fontname="Helvetica", nodesep=0.15, ranksep=0.22, pad=0.03, bgcolor=white];
+  node  [fontname="Helvetica", fontsize=10, shape=box, style="rounded,filled", fillcolor="#eef3fb", color="#4a5f80", margin="0.08,0.04"];
+  edge  [fontname="Helvetica", fontsize=8.5, arrowsize=0.6];
+  start [label="Start: choose port, Connect\n(CONNECT; if NACK:STATE: DISCONNECT or STATE to resync)"];
+  wait  [label="Wait for a click\n(buttons and free cells enabled only when valid)"];
+  send  [label="Click sends NEW / MOVE:i:m / RESIGN / STATE\nworker thread; one request in flight; UI stays live"];
+  rep   [shape=diamond, fillcolor="#fff6dd", label="Reply?", margin="0.02,0.01"];
+  ok    [fillcolor="#e6f4ea", label="BOARD / WIN / DRAW:\nredraw from the reply only;\nWIN/DRAW: disable cells, score"];
+  nack  [fillcolor="#fdeaea", label="NACK:\nshow its message,\nboard unchanged"];
+  none  [fillcolor="#fdeaea", label="no reply / bad checksum:\nSTATE once; else error,\nboard unchanged"];
+  reset [fillcolor="#fdeaea", label="NACK:NOGAME mid-game:\nSW0 reset: start screen"];
+  disc  [label="Disconnect or close window:\nRESIGN if running, DISCONNECT,\nclose port"];
+  start -> wait -> send -> rep;
+  rep -> ok; rep -> nack; rep -> none; rep -> reset;
+  ok -> wait [constraint=false]; nack -> wait [constraint=false]; none -> wait [constraint=false]; reset -> wait [constraint=false];
+  wait -> disc [constraint=false, style=dashed];
+}

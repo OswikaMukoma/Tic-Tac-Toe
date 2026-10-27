@@ -1,0 +1,13 @@
+Stage 7 first run on the REAL board, 21 Oct 2026 19:45 (transcribed from the owner's screenshot)
+Firmware: SerialGameServer.hex built from commit a86f8c5, flashed with STM32_Programmer_CLI (verified).
+
+> python -m pytest tests --port COM9 -m "not slow"
+platform win32 -- Python 3.14.3, pytest-9.1.1
+rootdir: C:\Users\HP\EEE_Project_Serial_Game_Server\tests, configfile: pytest.ini
+collected 100 items / 5 deselected / 95 selected
+tests\test_required.py ......................... [ 30%]
+tests\test_robustness.py ................................ [ 81%]
+tests\test_state_table.py ................. [100%]
+================ 95 passed, 5 deselected in 84.11s (0:01:24) ================
+
+The 5 deselected tests are the slow timeout tests; run them next (full run saved separately).

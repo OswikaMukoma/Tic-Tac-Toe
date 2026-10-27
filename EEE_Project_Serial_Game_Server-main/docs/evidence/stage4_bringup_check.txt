@@ -1,0 +1,23 @@
+Stage 4 bring-up, 21 Oct 2026, run by project owner on the real UCT dev board
+(transcribed from the owner's screenshots; board ST-LINK FW V2J48M35, VCP = COM9)
+
+> STM32_Programmer_CLI -c port=SWD -w firmware/build/bringup/BringUp.elf -v -rst
+  File BringUp.elf, 3.45 KB at 0x08000000, download verified successfully, MCU reset
+
+> python -m serial.tools.miniterm COM9 115200
+  BRINGUP TX 205 ... BRINGUP TX 228 (clean text, one line per second)
+
+> python tests\bringup_check.py COM9
+T2: listening 3 s for 'BRINGUP TX n' ...
+   got: ['BRINGUP TX 138', 'BRINGUP TX 139', 'BRINGUP TX 140']
+T3: echo test ...
+   sent: b'Hello 123 ~!\n'  got: b'Hello 123 ~!\nBRINGUP TX 141\r\n'
+T2 transmit : PASS
+T3 echo     : PASS
+
+T1 LED (owner's report): red blinks 3 times, then green 3 times -> PB10 red, PB11 green.
+T4 button (owner's screenshot, miniterm COM9):
+  BRINGUP TX 1 / SW0 DOWN / BRINGUP TX 2 / SW0 UP / ... / SW0 DOWN / ... / SW0 UP
+  and the LED was red while SW0 was held.
+Stage 4 hardware facts confirmed: USART1 PA9/PA10 AF1 115200 8N1 over ST-Link VCP,
+SW0 = PA0 (active low), PB10 = red, PB11 = green.

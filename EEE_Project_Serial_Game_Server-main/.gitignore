@@ -1,0 +1,24 @@
+# build output
+build/
+
+# Python
+__pycache__/
+.pytest_cache/
+*.pyc
+.venv/
+
+# local editor / OS metadata
+.DS_Store
+*.swp
+*~
+
+# host test binaries
+tests/core/test_game
+tests/host/host_server
+report/*.aux
+report/*.bbl
+report/*.blg
+report/*.fdb_latexmk
+report/*.fls
+report/*.log
+report/*.out

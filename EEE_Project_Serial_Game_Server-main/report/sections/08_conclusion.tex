@@ -1,0 +1,10 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+We built a Tic-Tac-Toe server on an STM32F051 that holds a 10-byte game, refuses every illegal request without changing it,
+and answers each frame with exactly one reply when the client waits for replies. The evidence is a 113-test suite that passes on the board (125 of 125 passed in 55.13~s with the 12 GUI-logic tests) and also on the mock and on the C logic compiled for the PC, and a
+fault-injection check that catches 15 of 15 faults. The firmware image is 6{,}420 bytes of code in 64~KB flash, with 1{,}772 bytes of static RAM in 8~KB.
+
+Limits are as follows. XOR misses all adjacent byte swaps and 11.40\% of two-bit errors, so it guards against line noise, not an attacker. Pipelining is limited: when 32 frames were sent in one write, 145 of 960 replies were lost on the board (16 frames were reliable), so the guarantee of one reply per frame holds for request-and-wait clients, which is how our GUI and tests behave. The protocol supports one client and
+no hidden information. We did not implement the move clock or undo. The AI move is computed in the main loop before the reply is sent; it takes about 142~\textmu s on a PC and we have not measured it on the board. The overrun counters exist but cannot be read without writing to the game UART, so
+we do not claim a number for UART errors on the board. With more time we would add a hardware-timer move clock and a larger receive buffer.

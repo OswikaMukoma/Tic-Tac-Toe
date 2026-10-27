@@ -1,0 +1,6 @@
+XOR checksum analysis over 38 protocol messages (calculation, not a board test)
+single-bit errors:      2512 tried, 0 undetected
+two-bit errors:         99672 tried, 11360 undetected (11.40%)
+adjacent byte swaps:    263 tried, 263 undetected (100.0%)
+random replacement of the whole body: 200000 trials, 835 undetected (0.417%; ideal 1/256 = 0.391%)
+Conclusion: all single-bit errors are caught; some two-bit errors and every byte swap are not.

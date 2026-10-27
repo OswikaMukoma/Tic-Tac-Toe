@@ -1,0 +1,60 @@
+\section{Game Logic and Server Authority}
+\label{sec:authority}
+
+\subsection{All state is 10 bytes owned by the STM32}
+The whole game is one \code{game_t}: nine cells and a state byte, 10 bytes with no padding. The client never holds it; it receives
+only checksummed text replies. The side to move is computed from the board (X when the counts are equal), so there is no separate turn variable that could
+disagree with the board, and a client cannot make it disagree.
+
+\subsection{A rejection cannot change state because every check precedes the first write}
+Listing~\ref{lst:move} is \code{game_move}. Every error \code{return} appears before the line \code{g->board[index] = side}, and the
+checks only read \code{*g}. The proof is by inspection: a path that returns an error has executed no write, so there is nothing to undo.
+The other commands share the shape of one condition followed by at most one state change. The order of the checks (state, range, turn,
+occupancy) is the order in Table~\ref{tab:errors}, and it is the same order the protocol promises, so the choice of NACK is deterministic.
+
+\begin{figure}[t]
+\begin{lstlisting}[float=false,language=C, caption={Validate-then-commit (\texttt{game.c}, comments trimmed).}, label=lst:move]
+if (g->state != GAME_IN_PROGRESS) return GAME_ERR_NOGAME;
+if (index < 0 || index >= GAME_CELLS)
+                                  return GAME_ERR_RANGE;
+const char side = game_side_to_move(g);
+if (mark != 0 && mark != side)    return GAME_ERR_NOTURN;
+if (g->board[index] != '.')       return GAME_ERR_OCCUPIED;
+/* ---- commit: first write to *g ---- */
+g->board[index] = side;
+const game_result_t r = game_evaluate(g->board);
+if (r != GAME_RESULT_NONE) g->state = GAME_OVER;
+\end{lstlisting}
+\end{figure}
+
+\subsection{The AI opponent cannot bypass the rules}
+In a \code{NEW:AI} game the server picks O's cell with \code{ai_pick}, which only reads a copy of the board, and then makes the move through the same \code{game_move} shown in Listing~\ref{lst:move}. It therefore cannot play an occupied or out-of-range cell. The AI flag is kept in the server structure, not in \code{game_t}, so the 10-byte game and the exhaustive core tests are unchanged. The search is minimax with alpha-beta pruning, so O never loses. We checked this on the PC by letting X try every possible sequence of moves: 681 games, 0 X wins (498 O wins, 183 draws), and 936 AI moves, none illegal (\tn{test_ai.c}, PC). A rejected \code{MOVE} does not trigger an AI move (\tn{test_rejected_moves_do_not_wake_the_ai}).
+
+\subsection{Win and draw are decided by the server after each commit}
+After a commit, \code{game_evaluate} tests the eight lines (three rows, three columns, two diagonals) before testing for a full board, so a move
+that fills the last cell and completes a line is a win, not a draw. The server then ends the game and replies \code{WIN} or \code{DRAW}.
+Table~\ref{tab:logic} lists the checks that back the argument. They run on the PC (game core alone), except the last row, which is the board suite.
+
+\begin{table}[t]
+\centering
+\caption{Evidence for the authority argument (PC unless stated).}
+\label{tab:logic}
+\scriptsize
+\begin{tabular}{@{}L{3.9cm}L{3.9cm}@{}}
+\toprule
+Check & Result \\
+\midrule
+Every error compared byte-for-byte (\code{memcmp} of the 10 bytes) & 0 failures in 50{,}546{,}417 checks \\
+All positions reachable by legal play, each tried with every index and claim & 549{,}946 positions; 6{,}859{,}116 illegal attempts, all left the game identical \\
+Random calls (fixed seed): six commands, indices $-3$..12 & 2{,}000{,}000 calls, invariants held; 22{,}948 wins, 3{,}003 draws \\
+Independent Python brute force vs.\ C rules & 255{,}168 games: 131{,}184 X, 77{,}904 O, 46{,}080 draws; C reproduces them \\
+All 8 lines, both players, over the serial link & \tn{test_each_line_wins}, 16 cases; passes on the board \\
+All 936 AI moves, X plays every sequence & 681 games: 0 X wins, 0 illegal AI moves \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The exhaustive run covers the game core only, not framing, and it ran on a PC. It uses one fixed random seed, so it is repeatable
+rather than broad. The link-level claim rests on the same invariants being tested through the serial port on the board
+(Sec.~\ref{sec:valid}). Hostile clients are bounded the same way: a client that lies about the turn gets \code{NACK:NOTURN}, one that
+resends a move gets \code{NACK:OCCUPIED} or \code{NACK:NOGAME}, and none of these changes the 10 bytes.

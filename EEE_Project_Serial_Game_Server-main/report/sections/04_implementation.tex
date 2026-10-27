@@ -1,0 +1,94 @@
+\section{Implementation}
+\label{sec:impl}
+
+\subsection{The interrupt only moves bytes; the main loop does the work}
+At 115200 baud a byte arrives every 87~\textmu s, and the USART has a one-byte receive register, so a second byte overwrites the first
+if the program is busy elsewhere (overrun). Listing~\ref{lst:irq} is the whole receive interrupt: it reads \code{RDR},
+stores the byte in a 128-byte ring buffer and returns. The ring has a power-of-two size so the wrap is a mask, and it is written
+only by the interrupt (\code{head}) and read only by the main loop (\code{tail}), so no lock is needed. If the ring is full the
+byte is counted and dropped rather than waiting. The error flags (overrun, framing, noise) are cleared by writing \code{ICR}, as described in the reference manual~\cite{rm0091}, so that one error does not persist.
+We trimmed the declarations.
+
+\begin{figure}[t]
+\begin{lstlisting}[float=false,language=C, caption={Receive interrupt and ring buffer (\texttt{uart.c}, trimmed).}, label=lst:irq]
+void USART1_IRQHandler(void){
+  uint32_t isr = USART1->ISR;
+  if (isr & (USART_ISR_ORE|USART_ISR_FE|USART_ISR_NE)) {
+    if (isr & USART_ISR_ORE) overruns++;
+    USART1->ICR = USART_ICR_ORECF | USART_ICR_FECF
+                | USART_ICR_NCF;    /* clear flags */
+  }
+  if (isr & USART_ISR_RXNE) {
+    uint8_t b = (uint8_t)USART1->RDR;  /* clears RXNE */
+    uint16_t next = (head + 1u) & (RING_SZ - 1u);
+    if (next != tail) { ring[head] = b; head = next; }
+    else dropped++;           /* full: drop, never wait */
+  }
+}
+\end{lstlisting}
+\end{figure}
+
+\subsection{The framer replies at the 33rd byte and resynchronises at the next LF}
+Listing~\ref{lst:framer} shows the byte-driven framer. The obvious alternative is to collect bytes until the LF and then test
+the length, but a sender that never sends LF would then fill the buffer or stall the server. Here the 33rd byte produces
+\code{NACK:TOOLONG} immediately and moves to a DISCARDING state that drops bytes silently until the next LF, so an oversize frame
+gets one reply, not two, and the buffer cannot overflow. Each call writes at most one reply and never waits. The inactivity
+timer is checked in \code{server_tick}, not with a delay, using the unsigned difference \code{now - last_ms}. This caused a bug: the
+main loop first read the time and then drained the ring, so \code{last_ms} could be newer than \code{now} and the unsigned subtraction
+wrapped to about $4\times10^9$, producing a false \code{NACK:TIMEOUT}. We found it by reading the code before the first flash and fixed
+it by reading the clock \emph{after} the drain, as the comment in \code{main.c} records.
+
+\begin{figure}[t]
+\begin{lstlisting}[float=false,language=C, caption={Framer (\texttt{server.c}, trimmed). At most one reply per call.}, label=lst:framer]
+size_t server_rx(server_t *s, uint8_t byte,
+   uint32_t now_ms, char *out, size_t cap){
+  size_t n = 0;  s->last_ms = now_ms;
+  switch (s->rx) {
+  case RX_IDLE: case RX_RECEIVING:
+    if (byte == LF) {          /* len 0: empty frame */
+      n = handle_frame(s, s->buf, s->len, out, cap);
+      server_reset_framer(s);
+    } else if (s->len >= SERVER_MAX_FRAME) { /*33rd*/
+      n = make_reply("NACK:TOOLONG", out, cap);
+      s->len = 0;  s->rx = RX_DISCARDING;
+    } else { s->buf[s->len++] = (char)byte;
+             s->rx = RX_RECEIVING; }
+    break;
+  case RX_DISCARDING:
+    if (byte == LF) server_reset_framer(s);
+    break;
+  }
+  return n;
+}
+\end{lstlisting}
+\end{figure}
+
+\subsection{The GUI does serial I/O on a worker thread and draws on a timer}
+A \code{MOVE} can take up to the 1~s reply timeout, and a Tk window that waits for it stops redrawing and looks frozen. Listing~\ref{lst:gui}
+runs each exchange on a daemon thread and passes the result back through a queue; only the Tk thread touches widgets. \code{poll}
+drains the queue every 30~ms using \code{root.after}, which is Tk's thread-safe way to schedule work on its own loop. The three
+exception paths separate a protocol error (\code{ReplyError}, shown as a message), and anything else such as a missing or unplugged
+port (``fatal'', disconnect), so an unexpected failure can never leave the \code{busy} flag set and lock the board. The
+\code{exchange} method sends \code{STATE} once after a lost reply, as described in Sec.~\ref{sec:design}.
+
+\begin{figure}[t]
+\begin{lstlisting}[float=false,language=Python, caption={GUI worker thread and queue polling (\texttt{app.py}, trimmed).}, label=lst:gui]
+def run_in_thread(self, work):
+    self.busy = True; self.refresh()
+    def target():
+        try:    self.results.put(("ok", work()))
+        except ReplyError as exc:
+            self.results.put(("err", str(exc)))
+        except Exception as exc:  # port gone
+            self.results.put(("fatal", str(exc)))
+    threading.Thread(target=target, daemon=True).start()
+
+def poll(self):
+    try:
+        while True:
+            kind, payload = self.results.get_nowait()
+            self.finish(kind, payload)
+    except queue.Empty: pass
+    self.root.after(30, self.poll)
+\end{lstlisting}
+\end{figure}

@@ -1,0 +1,28 @@
+\section{Introduction}
+\label{sec:intro}
+
+In a networked game, whoever holds the rules can cheat if the other side is trusted. The
+brief~\cite{brief} therefore puts the referee on an STM32F051 microcontroller and treats the PC
+program as an untrusted display. Our design guarantees one property: \emph{a rejected request
+never changes the game}. The STM32 owns the board, the turn and the win test, and the PC only
+sends requests and draws what the board confirms.
+
+We chose Tic-Tac-Toe because its 8 winning lines and 9 cells can be checked exhaustively, which
+lets us spend the effort on the protocol and the tests, as the mark scheme rewards. The PC client uses
+Python's Tkinter~\cite{guilib}: it ships with Python, so a marker can run it without installing a
+toolkit, and its \code{after()} polling suits our worker-thread design (Sec.~\ref{sec:design}).
+
+Four decisions shape the system. (i)~The rules are portable C with no hardware calls, so the same
+source runs on the Cortex-M0 and on a PC. (ii)~Messages are short ASCII lines with an XOR checksum, and
+every frame gets exactly one reply (for clients that wait for replies). (iii)~An optional \code{NEW:AI} command makes the server play O with a minimax opponent, again through the same validated move path. (iv)~One pytest suite of 113 tests runs unchanged against a
+Python mock, the real C logic on the PC, and the board. We reused the course
+base~\cite{coursebase} for start-up code and HAL drivers, and we used an AI assistant~\cite{aiuse}
+to draft code, tests, diagrams and text; both authors reviewed and ran every module.
+
+\textbf{Task allocation.} We alternated the driver role by stage, following our stage plan. Oswika Mukoma drove the protocol and FSM specification, the Python mock server and pytest harness, the firmware framing (interrupt, ring buffer, framer) and the hardware integration on the board. Hazel Kunyavapa drove the portable game core, the hardware bring-up, the firmware state machine and dispatcher, and the Tkinter GUI. The partner who was not driving reviewed and signed off each stage. We did the setup, the stretch AI opponent, the bench testing, the video and this report together.
+
+\textbf{Structure.} Section~\ref{sec:protocol} defines the protocol, Section~\ref{sec:design} gives the
+firmware and GUI design, Section~\ref{sec:impl} explains three code excerpts,
+Section~\ref{sec:authority} argues that the server stays authoritative,
+Section~\ref{sec:robust} covers bad input, Section~\ref{sec:valid} reports tests, and
+Section~\ref{sec:conclusion} concludes.

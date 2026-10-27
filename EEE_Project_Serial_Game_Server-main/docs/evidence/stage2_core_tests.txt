@@ -1,0 +1,34 @@
+# Stage 2 evidence - portable game core
+# Date: 2026-10-12 15:21 UTC   Host: Linux 6.18.44-fc-v114   Compiler: gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+# Git base commit: 2d8ffe0 (game.c/game.h/tests uncommitted at capture time)
+
+## 1. Independent reference count (python3 tests/core/count_games.py)
+terminal games: 255168 {'WIN_X': 131184, 'DRAW': 46080, 'WIN_O': 77904}
+by length: {(5, 'WIN_X'): 1440, (6, 'WIN_O'): 5328, (7, 'WIN_X'): 47952, (8, 'WIN_O'): 72576, (9, 'DRAW'): 46080, (9, 'WIN_X'): 81792}
+non-terminal positions incl. start (DFS nodes): 294778
+
+## 2. C unit tests (make -C tests/core test), ASan + UBSan, -Wall -Wextra -Werror -pedantic
+cc -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined -fno-sanitize-recover=undefined -I../../firmware/Core/Inc test_game.c ../../firmware/Core/Src/game.c -o test_game
+./test_game
+game core tests (firmware/Core/Src/game.c)
+PASS  test_init                          (3 checks)
+PASS  test_evaluate_all_lines            (36 checks)
+PASS  test_state_table                   (435 checks)
+PASS  test_state_table_side_effects      (29 checks)
+PASS  test_move_rejections               (110 checks)
+PASS  test_claimed_mark_matches_unclaimed (45 checks)
+PASS  test_scripted_x_win                (28 checks)
+PASS  test_scripted_o_win                (26 checks)
+PASS  test_scripted_draw                 (23 checks)
+      games 255168 (X wins 131184, O wins 77904, draws 46080), positions 549946, illegal probes rejected 6859116
+PASS  test_exhaustive_game_tree          (22517377 checks)
+      2000000 random calls, seed 12345 (applied/rejected): CONNECT 18574/31244; NEW 37782/12226; STATE 31096/18582; RESIGN 11831/38089; DISCONNECT 38379/11897; MOVE 233803/1516497;
+      games ended by a win 22948, by a draw 3003
+PASS  test_random_calls                  (28028299 checks)
+PASS  test_error_names                   (6 checks)
+
+50546417 checks, 0 failed
+
+## 3. Cortex-M0 compile of game.c (arm-none-eabi-gcc -mcpu=cortex-m0 -Og -Wall -Wextra): no warnings; flash use below (text includes the 24-byte line table)
+   text	   data	    bss	    dec	    hex	filename
+    533	      0	      0	    533	    215	/tmp/game_m0.o

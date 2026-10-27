@@ -1,0 +1,13 @@
+Measurements on port COM9, 2026-10-27 16:20:12
+M1 request->reply latency (STATE in IDLE, 9-byte frame, ~14-byte reply): n=300 min=2.62 median=3.02 mean=3.11 p95=3.83 max=4.42 ms
+M2 partial-frame timeout (spec 500 ms; last byte sent -> NACK:TIMEOUT received): n=20 min=500.93 median=501.73 mean=501.77 p95=502.46 max=502.74 ms
+M3 sustained exchange: 2000 requests, 0 wrong/missing replies, 293.6 requests/s
+M4 pipelined bursts (N frames sent in one write, STATE with checksum; each repeated 30 times):
+   N=1   (  9 bytes): 0 replies missing or wrong out of 30
+   N=2   ( 18 bytes): 0 replies missing or wrong out of 60
+   N=4   ( 36 bytes): 0 replies missing or wrong out of 120
+   N=8   ( 72 bytes): 0 replies missing or wrong out of 240
+   N=16  (144 bytes): 0 replies missing or wrong out of 480
+   N=32  (288 bytes): 145 replies missing or wrong out of 960
+   N=64  (576 bytes): 962 replies missing or wrong out of 1920
+M5 recovery: 100 random garbage frames, each followed by CONNECT: 0 failed recoveries

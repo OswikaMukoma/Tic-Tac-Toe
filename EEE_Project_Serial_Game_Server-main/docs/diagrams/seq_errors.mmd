@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant G as GUI / test
+    participant S as STM32
+    Note over S: IN_PROGRESS, board ....X....
+    G->>S: MOVE:4:O
+    S-->>G: NACK:OCCUPIED
+    G->>S: MOVE:9
+    S-->>G: NACK:RANGE
+    G->>S: MOVE:0:X
+    S-->>G: NACK:NOTURN
+    G->>S: MOVE:4:O*00 (wrong checksum)
+    S-->>G: NACK:BADSUM
+    G->>S: 40 bytes, no LF
+    S-->>G: NACK:TOOLONG (sent at the 33rd byte)
+    Note over S: rest of the line discarded silently
+    G->>S: MOV (stalls)
+    Note over S: 500 ms of silence
+    S-->>G: NACK:TIMEOUT
+    G->>S: STATE
+    S-->>G: BOARD:....X....
+    Note over S: board never changed (invariant R2)

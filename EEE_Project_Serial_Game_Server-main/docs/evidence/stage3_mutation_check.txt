@@ -1,0 +1,18 @@
+baseline (no fault): PASS
+fault                    result   first failing test
+accept_bad_checksum      CAUGHT   test_robustness.py::test_checksum_optional_but_verified
+draw_reported_as_ok      CAUGHT   test_required.py::test_draw
+limit_off_by_one         CAUGHT   test_robustness.py::test_32_byte_frame_accepted_33_rejected
+moves_after_game_over    CAUGHT   test_required.py::test_x_wins_then_no_more_moves
+nack_changes_state       CAUGHT   test_required.py::test_wrong_turn
+no_timeout               CAUGHT   test_robustness.py::test_partial_frame_times_out
+no_turn_check            CAUGHT   test_required.py::test_wrong_turn
+occupied_overwrites      CAUGHT   test_required.py::test_occupied
+oversize_double_reply    CAUGHT   test_robustness.py::test_32_byte_frame_accepted_33_rejected
+oversize_no_reply        CAUGHT   test_robustness.py::test_32_byte_frame_accepted_33_rejected
+range_off_by_one         CAUGHT   test_required.py::test_new_game_returns_empty_board
+reply_without_checksum   CAUGHT   test_required.py::test_connect_in_idle
+resign_in_idle           CAUGHT   test_state_table.py::test_cell[RESIGN-IDLE]
+timeout_too_short        CAUGHT   test_robustness.py::test_partial_frame_times_out
+win_misses_diagonal      CAUGHT   test_required.py::test_each_line_wins[line7-X]
+15/15 faults caught
